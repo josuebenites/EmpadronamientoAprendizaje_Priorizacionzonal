@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Descargas pesadas de Overture, solo necesarias para regenerar data/
+data/raw_buildings/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini

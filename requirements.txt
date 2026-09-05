@@ -1,0 +1,17 @@
+# Dependencias del tablero. Es la lista MINIMA para correrlo y desplegarlo.
+#
+# Los pisos de version son los que se probaron. Importa sobre todo el de
+# streamlit: el tablero usa width="stretch" en pydeck_chart y dataframe, que en
+# versiones anteriores esperaba un numero de pixeles y falla.
+#
+# pyarrow no se importa en el codigo, pero lo necesitan tanto polars, para
+# convertir a pandas, como streamlit. Va explicito para que un servidor no lo
+# resuelva por su cuenta: la combinacion de numpy y pyarrow desalineados es el
+# error mas comun al instalar sobre una distribucion como Anaconda.
+streamlit>=1.50
+pydeck>=0.9
+polars>=1.20
+pandas>=2.2
+numpy>=1.26
+shapely>=2.0
+pyarrow>=15.0

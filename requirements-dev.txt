@@ -1,0 +1,7 @@
+# Solo para REGENERAR data/ con scripts/generar_manzanas.py. No hacen falta para
+# usar ni para desplegar el tablero, y son las que mas suelen fallar al
+# instalarse en Windows o en un servidor, asi que se mantienen aparte.
+-r requirements.txt
+overturemaps
+duckdb
+openpyxl
