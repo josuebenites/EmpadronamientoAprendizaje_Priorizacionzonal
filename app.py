@@ -329,14 +329,24 @@ st.markdown(f"""
   }}
   table.resumen td:first-child {{ text-align: left; font-weight: 700; }}
   table.resumen tr.piloto td {{ background: {IPA_GRIS_CLARO}; }}
-  /* Subfilas de la desagregacion por tipo de zona: sangradas y en gris, para
-     que se lean como parte de la fila de arriba y no como otro ambito. */
+  /* Cruce anidado dentro de la intervencion. Dos niveles de sangria: el
+     estrato de ingreso primero y los perfiles debajo. La sangria es lo que
+     comunica la jerarquia, asi que las dos clases no deben igualarse. */
+  table.resumen tr.sub-grupo td {{
+      background: {IPA_GRIS_CLARO}; color: {IPA_VERDE_OSCURO};
+      font-size: .84rem; border-bottom: 1px solid {IPA_GRIS};
+  }}
+  table.resumen tr.sub-grupo td:first-child {{
+      font-weight: 700; padding-left: 24px;
+      border-left: 3px solid {IPA_VERDE};
+  }}
   table.resumen tr.sub td {{
-      background: {IPA_GRIS_CLARO}; color: #5c5b5e; font-size: .82rem;
+      background: {IPA_GRIS_CLARO}; color: #5c5b5e; font-size: .80rem;
       border-bottom: 1px solid #e4e5e5;
   }}
   table.resumen tr.sub td:first-child {{
-      font-weight: 400; padding-left: 26px;
+      font-weight: 400; padding-left: 46px;
+      border-left: 3px solid {IPA_GRIS};
   }}
   table.resumen tr.total td {{ font-weight: 700;
                                border-top: 2px solid {IPA_VERDE_OSCURO}; }}
@@ -1102,16 +1112,48 @@ etiqueta_esc = "proyectada a 2025" if es_pro else "oficial, censo 2017"
 # seleccion del distrito, y suman exactamente la fila del total de la
 # intervencion. Las zonas sin perfil, si las hubiera, entran como "sin perfil"
 # para que la suma cuadre y no se pierda ninguna en el camino.
-perf_pil = zd[en_piloto].copy()
-perf_pil["perfil_et"] = perf_pil["perfil"].fillna("sin perfil")
-subfilas = ""
-for p in sorted(perf_pil["perfil_et"].unique()):
-    c = cifras(perf_pil[perf_pil["perfil_et"] == p])
-    etiqueta = f"Perfil {p}" if p != "sin perfil" else "Sin perfil"
-    parte = 100 * c["brecha"] / pil["brecha"] if pil["brecha"] else 0
-    subfilas += fila_html("sub", f"↳ {etiqueta}", c,
-                          f"{parte:.0f}% del potencial de la intervención")
+#
+# Es un CRUCE ANIDADO, no dos cortes sueltos: primero el estrato de ingreso y
+# dentro de cada estrato, los perfiles. Asi se lee de corrido cuanto aporta cada
+# combinacion, que es la pregunta que sigue a haber levantado la exclusion por
+# ingreso alto.
+#
+# Las filas de estrato suman la fila de la intervencion, y los perfiles de cada
+# estrato suman su propia fila de estrato. Todos los porcentajes van sobre el
+# MISMO denominador, el potencial de la intervencion, para que las seis celdas
+# se puedan comparar directamente entre si.
+sub_pil = zd[en_piloto].copy()
+sub_pil["perfil_et"] = sub_pil["perfil"].fillna("sin perfil")
 
+alto = sub_pil["ingreso_alto"]
+# Sin estrato evaluable va en grupo propio y no se reparte entre los otros dos.
+# El pipeline conserva esos casos a proposito: la falta de dato no es evidencia
+# de ingreso alto, y meterlos en "priorizado" afirmaria algo que el dato no dice.
+sin_estrato = (sub_pil["d_alto_usado"].isna() if "d_alto_usado" in sub_pil.columns
+               else pd.Series(False, index=sub_pil.index))
+
+grupos_ingreso = [
+    ("Ingreso priorizado", ~alto & ~sin_estrato),
+    ("Ingreso no priorizado", alto & ~sin_estrato),
+    ("Sin estrato evaluable", sin_estrato),
+]
+
+
+def pct(c):
+    parte = 100 * c["brecha"] / pil["brecha"] if pil["brecha"] else 0
+    return f"{parte:.0f}% del potencial de la intervención"
+
+
+subfilas = ""
+for etiqueta, mascara in grupos_ingreso:
+    grupo = sub_pil[mascara]
+    if len(grupo) == 0:          # un grupo vacio no informa y alarga la tabla
+        continue
+    subfilas += fila_html("sub-grupo", etiqueta, cifras(grupo), pct(cifras(grupo)))
+    for p in sorted(grupo["perfil_et"].unique()):
+        c = cifras(grupo[grupo["perfil_et"] == p])
+        et = f"Perfil {p}" if p != "sin perfil" else "Sin perfil"
+        subfilas += fila_html("sub", et, c, pct(c))
 st.markdown(
     '<table class="resumen">'
     '<tr><th>Ámbito</th><th>Zonas</th><th>Hogares INEI</th>'
